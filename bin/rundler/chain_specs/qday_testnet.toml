@@ -1,0 +1,11 @@
+name = "QDay Testnet"
+id = 44005
+
+block_gas_limit = 30000000
+
+# Type-2 handleOps are accepted on QDay (verified on chain 2026-09-28).
+eip1559_enabled = true
+
+# cdk-erigon's debug_traceCall rejects a feeless call ("fee cap less than block base fee").
+# 1000 gwei sits far above QDay's base fee; it is only ever used inside the simulation.
+trace_call_max_fee_per_gas = 1000000000000

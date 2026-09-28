@@ -106,6 +106,12 @@ pub struct ChainSpec {
     pub eip7623_calldata_floor_zero_byte_gas: u64,
     /// Gas cost for a non-zero byte in calldata for the floor operation
     pub eip7623_calldata_floor_non_zero_byte_gas: u64,
+    /// Fee cap to set on the validation `debug_traceCall`, with a matching balance
+    /// override on the simulation sender. Zero leaves the call feeless, as upstream.
+    ///
+    /// Needed on nodes whose `debug_traceCall` enforces the block base fee (e.g. cdk-erigon),
+    /// which reject a feeless call with "fee cap less than block base fee".
+    pub trace_call_max_fee_per_gas: u64,
 
     /*
      * Fee estimation
@@ -201,6 +207,7 @@ impl Default for ChainSpec {
             eip7623_enabled: false,
             eip7623_calldata_floor_zero_byte_gas: 10,
             eip7623_calldata_floor_non_zero_byte_gas: 40,
+            trace_call_max_fee_per_gas: 0,
             da_pre_verification_gas: false,
             da_gas_oracle_type: DAGasOracleType::default(),
             da_gas_oracle_contract_address: Address::ZERO,
@@ -242,6 +249,11 @@ impl ChainSpec {
         } else {
             self.block_gas_limit as u128
         }
+    }
+
+    /// Get the fee cap for the validation trace call
+    pub fn trace_call_max_fee_per_gas(&self) -> u128 {
+        self.trace_call_max_fee_per_gas as u128
     }
 
     /// Get the minimum max priority fee per gas

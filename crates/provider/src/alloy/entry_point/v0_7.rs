@@ -502,11 +502,24 @@ where
         let ep_simulations =
             IEntryPointSimulationsInstance::new(addr, self.i_entry_point.provider());
 
-        let call = ep_simulations
+        let gas = self.max_verification_gas.saturating_add(da_gas);
+        let mut call = ep_simulations
             .simulateValidation(user_op.pack())
-            .gas(self.max_verification_gas.saturating_add(da_gas))
+            .gas(gas)
             .from(SIMULATION_SENDER)
             .into_transaction_request();
+
+        let max_fee = self.chain_spec.trace_call_max_fee_per_gas();
+        if max_fee > 0 {
+            call.inner = call
+                .inner
+                .max_fee_per_gas(max_fee)
+                .max_priority_fee_per_gas(0);
+            override_ep
+                .entry(SIMULATION_SENDER)
+                .or_default()
+                .balance = Some(U256::from(max_fee) * U256::from(gas));
+        }
 
         Ok((call.inner, override_ep))
     }
