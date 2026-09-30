@@ -1,0 +1,66 @@
+name: QDay publish image
+
+# Builds the QDay Rundler image and pushes it to GHCR, following the team's deploy
+# convention: the server compose pulls ghcr.io/qday-io/qday-rundler:testnet.
+#
+# Release tags use the team's `qday-v*` form (e.g. qday-v0.11.0-1), never `v*`:
+# upstream's docker-release.yaml fires on `v*` tags.
+on:
+  push:
+    branches: ["qday/**"]
+    tags: ["qday-v*"]
+  workflow_dispatch: {}
+
+concurrency:
+  group: qday-publish-${{ github.ref }}
+  cancel-in-progress: false # never cancel a half-pushed image
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE: ${{ github.repository_owner }}/qday-rundler
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The bundler-spec-tests submodules use SSH URLs and are only needed for
+      # spec tests; the build needs the ones under crates/.
+      - name: Init build submodules
+        run: git submodule update --init --recursive -- crates/
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: tags
+        run: |
+          {
+            echo "tags<<EOF"
+            echo "${REGISTRY}/${IMAGE}:${GITHUB_SHA}"
+            if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+              echo "${REGISTRY}/${IMAGE}:${GITHUB_REF_NAME}"
+            else
+              echo "${REGISTRY}/${IMAGE}:testnet"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # The testnet server runs linux/amd64.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          cache-from: type=gha,scope=rundler
+          cache-to: type=gha,mode=max,scope=rundler
