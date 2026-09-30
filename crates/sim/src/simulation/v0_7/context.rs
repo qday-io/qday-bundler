@@ -186,6 +186,16 @@ where
                     }
                 }
             } else if call.call_type == Opcode::CREATE2 {
+                // [OP-031] the CREATE2 that deploys the sender is allowed, whether the factory
+                // issues it or a contract the factory calls (e.g. a staked meta-factory that
+                // wraps the real factory). It must not go through the entity scan below: a
+                // factory that initializes the new account after creating it makes the account
+                // the first entity found, and the deployment would be charged to the account.
+                // Once-only is enforced separately on the factory phase.
+                if is_sender_deployment(op.factory().is_some(), op.sender(), call.to) {
+                    continue;
+                }
+
                 // handling for CREATE2 [OP-031, EREP-060]
                 let phase = Self::get_nearest_entity_phase(&call_stack[i..], &entity_infos);
                 let tracer_phase = &mut tracer_out.phases[phase];
@@ -509,6 +519,14 @@ impl<T> ValidationContextProvider<T> {
     }
 }
 
+/// True if a CREATE2 to `created` is the deployment of the sender itself.
+///
+/// The sender only lacks code while its factory runs, so a CREATE2 that creates it can only
+/// happen in the deployment phase.
+fn is_sender_deployment(has_factory: bool, sender: Address, created: Address) -> bool {
+    has_factory && created == sender
+}
+
 fn entity_type_to_phase(entity_type: EntityType) -> usize {
     match entity_type {
         EntityType::Factory => 0,
@@ -543,5 +561,30 @@ where
             ),
             sim_settings,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use alloy_primitives::address;
+
+    use super::*;
+
+    const SENDER: Address = address!("b9f03e88a7f81264dbe62e2ecf259c4358dba42e");
+    const OTHER: Address = address!("0000000000000000000000000000000000000001");
+
+    #[test]
+    fn test_sender_deployment_is_create2_of_sender_with_factory() {
+        assert!(is_sender_deployment(true, SENDER, SENDER));
+    }
+
+    #[test]
+    fn test_sender_deployment_needs_a_factory() {
+        assert!(!is_sender_deployment(false, SENDER, SENDER));
+    }
+
+    #[test]
+    fn test_sender_deployment_must_create_the_sender() {
+        assert!(!is_sender_deployment(true, SENDER, OTHER));
     }
 }
