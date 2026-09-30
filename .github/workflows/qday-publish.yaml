@@ -1,6 +1,6 @@
 name: QDay publish image
 
-# Builds the QDay Rundler image and pushes it to GHCR, following the team's deploy
+# Builds the qday-bundler image and pushes it to GHCR, following the team's deploy
 # convention: the server compose pulls ghcr.io/qday-io/qday-bundler:testnet.
 #
 # Release tags use the team's `qday-v*` form (e.g. qday-v0.11.0-1), never `v*`:
@@ -63,5 +63,5 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ steps.tags.outputs.tags }}
-          cache-from: type=gha,scope=rundler
-          cache-to: type=gha,mode=max,scope=rundler
+          cache-from: type=gha,scope=bundler
+          cache-to: type=gha,mode=max,scope=bundler
