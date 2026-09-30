@@ -8,6 +8,7 @@ name: QDay publish image
 on:
   push:
     branches: ["qday/**"]
+    paths-ignore: ["deploy/**", "**.md"]
     tags: ["qday-v*"]
   workflow_dispatch: {}
 

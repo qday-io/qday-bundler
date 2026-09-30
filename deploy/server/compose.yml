@@ -1,0 +1,61 @@
+# QDay testnet bundler — server compose (team GHCR convention, see qday-faucet deploy/server).
+#
+# Usage on the server:
+#   1. Put this file at /data/qday-rundler/compose.yml
+#   2. cp .env.example .env && chmod 600 .env   (fill SIGNER_PRIVATE_KEYS)
+#   3. docker compose up -d
+#
+# ⛔ No auto-update cron. The mempool lives in memory, so every restart drops pending
+# UserOperations; update deliberately: set RUNDLER_TAG, then `docker compose up -d`.
+#
+# No host port is published. nginx (qday2-nginx, same docker network) proxies
+# bundler-test.qday.info → qday-rundler:3000. Metrics (8080) stay inside the network.
+services:
+  rundler:
+    image: ghcr.io/qday-io/qday-rundler:${RUNDLER_TAG:-testnet}
+    platform: linux/amd64
+    container_name: qday-rundler
+    restart: always
+    command: ["node"]
+    env_file:
+      - .env
+    environment:
+      NETWORK: qday_testnet
+      # Same-host RPC over the docker network: no Cloudflare hop, no public rate limit,
+      # and debug_traceCall never has to be exposed publicly.
+      NODE_HTTP: ${NODE_HTTP:-http://cdk-erigon-rpc:8545}
+      ENABLED_ENTRY_POINTS: v0.7
+      NUM_BUILDERS_V0_7: "1"
+      # FactoryStaker on QDay is staked 0.1 QDAY; Rundler's default (1 QDAY) would treat
+      # it as unstaked and reject every account-creating UserOperation.
+      MIN_STAKE_VALUE: ${MIN_STAKE_VALUE:-100000000000000000}
+      RPC_HOST: 0.0.0.0
+      RPC_PORT: "3000"
+      RPC_API: eth,rundler
+      # Testnet: any browser dapp may call the bundler.
+      RPC_CORSDOMAIN: ${RPC_CORSDOMAIN:-*}
+      METRICS_HOST: 0.0.0.0
+      METRICS_PORT: "8080"
+      UNSAFE: "false"
+      ENABLE_UNSAFE_FALLBACK: "false"
+      RUST_LOG: ${RUST_LOG:-info}
+    expose:
+      - "3000"
+      - "8080"
+    networks:
+      - qday2-rpc
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -H 'content-type: application/json' -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_chainId\",\"params\":[]}' http://127.0.0.1:3000 | grep -q 0xabe5"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+networks:
+  qday2-rpc:
+    external: true
