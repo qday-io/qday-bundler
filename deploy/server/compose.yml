@@ -1,20 +1,20 @@
 # QDay testnet bundler — server compose (team GHCR convention, see qday-faucet deploy/server).
 #
 # Usage on the server:
-#   1. Put this file at /data/qday-rundler/compose.yml
+#   1. Put this file at /data/qday-bundler/compose.yml
 #   2. cp .env.example .env && chmod 600 .env   (fill SIGNER_PRIVATE_KEYS)
 #   3. docker compose up -d
 #
 # ⛔ No auto-update cron. The mempool lives in memory, so every restart drops pending
-# UserOperations; update deliberately: set RUNDLER_TAG, then `docker compose up -d`.
+# UserOperations; update deliberately: set BUNDLER_TAG, then `docker compose up -d`.
 #
 # No host port is published. nginx (qday2-nginx, same docker network) proxies
-# bundler.qday.info → qday-rundler:3000. Metrics (8080) stay inside the network.
+# bundler.qday.info → qday-bundler:3000. Metrics (8080) stay inside the network.
 services:
-  rundler:
-    image: ghcr.io/qday-io/qday-rundler:${RUNDLER_TAG:-testnet}
+  bundler:
+    image: ghcr.io/qday-io/qday-bundler:${BUNDLER_TAG:-testnet}
     platform: linux/amd64
-    container_name: qday-rundler
+    container_name: qday-bundler
     restart: always
     command: ["node"]
     env_file:

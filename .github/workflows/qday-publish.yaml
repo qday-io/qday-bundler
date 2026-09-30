@@ -1,7 +1,7 @@
 name: QDay publish image
 
 # Builds the QDay Rundler image and pushes it to GHCR, following the team's deploy
-# convention: the server compose pulls ghcr.io/qday-io/qday-rundler:testnet.
+# convention: the server compose pulls ghcr.io/qday-io/qday-bundler:testnet.
 #
 # Release tags use the team's `qday-v*` form (e.g. qday-v0.11.0-1), never `v*`:
 # upstream's docker-release.yaml fires on `v*` tags.
@@ -22,7 +22,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE: ${{ github.repository_owner }}/qday-rundler
+  IMAGE: ${{ github.repository_owner }}/qday-bundler
 
 jobs:
   publish:
