@@ -9,7 +9,7 @@
 # UserOperations; update deliberately: set RUNDLER_TAG, then `docker compose up -d`.
 #
 # No host port is published. nginx (qday2-nginx, same docker network) proxies
-# bundler-test.qday.info → qday-rundler:3000. Metrics (8080) stay inside the network.
+# bundler.qday.info → qday-rundler:3000. Metrics (8080) stay inside the network.
 services:
   rundler:
     image: ghcr.io/qday-io/qday-rundler:${RUNDLER_TAG:-testnet}
