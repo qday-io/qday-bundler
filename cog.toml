@@ -1,2 +1,6 @@
 ignore_merge_commits = true
 tag_prefix = "v"
+
+# QDay fork: deployment files under deploy/ (server compose, nginx).
+[commit_types]
+deploy = { changelog_title = "Deployment" }

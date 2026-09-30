@@ -515,10 +515,8 @@ where
                 .inner
                 .max_fee_per_gas(max_fee)
                 .max_priority_fee_per_gas(0);
-            override_ep
-                .entry(SIMULATION_SENDER)
-                .or_default()
-                .balance = Some(U256::from(max_fee) * U256::from(gas));
+            override_ep.entry(SIMULATION_SENDER).or_default().balance =
+                Some(U256::from(max_fee) * U256::from(gas));
         }
 
         Ok((call.inner, override_ep))
@@ -907,5 +905,78 @@ fn add_authorization_tuple(
 ) {
     if let Some(authorization) = authorization {
         authorization_utils::apply_7702_overrides(state_override, sender, authorization.address);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use alloy_provider::RootProvider;
+
+    use super::*;
+    use crate::ZeroDAGasOracle;
+
+    fn provider_with(
+        chain_spec: ChainSpec,
+    ) -> EntryPointProvider<RootProvider<AnyNetwork>, ZeroDAGasOracle> {
+        EntryPointProvider::new(
+            chain_spec,
+            EntryPointVersion::V0_7,
+            1_000_000,
+            1_000_000,
+            1_000_000,
+            1_000_000,
+            RootProvider::new_http("http://127.0.0.1:1".parse().unwrap()),
+            ZeroDAGasOracle,
+        )
+    }
+
+    fn user_op(chain_spec: &ChainSpec) -> UserOperation {
+        UserOperationBuilder::new(
+            chain_spec,
+            EntryPointVersion::V0_7,
+            UserOperationRequiredFields {
+                sender: Address::ZERO,
+                nonce: U256::ZERO,
+                call_data: Bytes::new(),
+                signature: Bytes::new(),
+                call_gas_limit: 0,
+                verification_gas_limit: 0,
+                pre_verification_gas: 0,
+                max_fee_per_gas: 0,
+                max_priority_fee_per_gas: 0,
+            },
+        )
+        .build()
+    }
+
+    #[test]
+    fn test_tracer_call_is_feeless_by_default() {
+        let chain_spec = ChainSpec::default();
+        let (tx, overrides) = provider_with(chain_spec.clone())
+            .get_tracer_simulate_validation_call(user_op(&chain_spec))
+            .unwrap();
+
+        assert_eq!(tx.max_fee_per_gas, None);
+        assert_eq!(tx.max_priority_fee_per_gas, None);
+        assert!(!overrides.contains_key(&SIMULATION_SENDER));
+    }
+
+    #[test]
+    fn test_tracer_call_sets_fee_cap_and_funds_sender() {
+        let chain_spec = ChainSpec {
+            trace_call_max_fee_per_gas: 1_000,
+            ..Default::default()
+        };
+        let (tx, overrides) = provider_with(chain_spec.clone())
+            .get_tracer_simulate_validation_call(user_op(&chain_spec))
+            .unwrap();
+
+        assert_eq!(tx.max_fee_per_gas, Some(1_000));
+        assert_eq!(tx.max_priority_fee_per_gas, Some(0));
+        let gas = tx.gas.unwrap();
+        assert_eq!(
+            overrides[&SIMULATION_SENDER].balance,
+            Some(U256::from(1_000u64) * U256::from(gas))
+        );
     }
 }
