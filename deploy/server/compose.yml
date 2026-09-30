@@ -36,6 +36,8 @@ services:
       RPC_CORSDOMAIN: ${RPC_CORSDOMAIN:-*}
       METRICS_HOST: 0.0.0.0
       METRICS_PORT: "8080"
+      # QDay RPC caps eth_getLogs at 1000 blocks; ~50 min of receipt lookback at 3 s blocks.
+      USER_OPERATION_EVENT_BLOCK_DISTANCE: "999"
       UNSAFE: "false"
       ENABLE_UNSAFE_FALLBACK: "false"
       RUST_LOG: ${RUST_LOG:-info}
